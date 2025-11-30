@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriDashboard - Interactive Flow</title>
+
+    <!-- MapTiler SDK -->
+    <script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.umd.js"></script>
+    <link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.css" rel="stylesheet" />
+
+    <!-- Chart.js for better visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            background: #F5F7FA;
+            color: #2C3E50;
+        }
+
+        /* Hide all pages by default */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .top-bar {
+            background: white;
+            border-bottom: 1px solid #E5E7EB;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            color: #0A5C36;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #0A5C36, #0D7A4A);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .progress-container {
+            background: white;
+            padding: 24px 32px;
+            border-bottom: 2px solid #E5E7EB;
+            position: sticky;
+            top: 69px;
+            z-index: 199;
+        }
+
+        .steps {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 40px;
+            right: 40px;
+            height: 2px;
+            background: #E5E7EB;
+            z-index: 0;
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 20px;
+            left: 40px;
+            height: 2px;
+            background: #27AE60;
+            z-index: 1;
+            transition: width 0.3s ease;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #E5E7EB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #9CA3AF;
+            transition: all 0.3s ease;
+        }
+
+        .step.active .step-circle {
+            background: #0A5C36;
+            border-color: #0A5C36;
+            color: white;
+        }
+
+        .step.completed .step-circle {
+            background: #27AE60;
+            border-color: #27AE60;
+            color: white;
+        }
+
+        .step-label {
+            font-size: 13px;
+            color: #6B7280;
+            text-align: center;
+        }
+
+        .step.active .step-label {
+            color: #0A5C36;
+            font-weight: 600;
+        }
+
+        /* PAGE 1 STYLES */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 260px);
+        }
+
+        .sidebar {
+            width: 350px;
+            background: white;
+            border-right: 1px solid #E5E7EB;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-subtitle {
+            color: #6B7280;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px 12px 40px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #0A5C36;
+            box-shadow: 0 0 0 3px rgba(10, 92, 54, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: #9CA3AF;
+        }
+
+        .filter-section {
+            margin-bottom: 24px;
+        }
+
+        .filter-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #374151;
+        }
+
+        .filter-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            padding: 6px 14px;
+            border: 1px solid #E5E7EB;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .chip:hover {
+            border-color: #0A5C36;
+            background: #F0FDF4;
+        }
+
+        .chip.active {
+            background: #0A5C36;
+            color: white;
+            border-color: #0A5C36;
+        }
+
+        .area-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .area-item {
+            padding: 16px;
+            border: 2px solid #E5E7EB;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .area-item:hover {
+            border-color: #0A5C36;
+            box-shadow: 0 2px 8px rgba(10, 92, 54, 0.1);
+        }
+
+        .area-item.selected {
+            border-color: #0A5C36;
+            background: #F0FDF4;
+        }
+
+        .area-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .area-name {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .area-location {
+            font-size: 12px;
+            color: #6B7280;
+        }
+
+        .area-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #E8F5E9;
+            color: #27AE60;
+        }
+
+        .area-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #6B7280;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            background: #E5E7EB;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-popup {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #0A5C36;
+        }
+
+        .popup-info {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+
+        .popup-label {
+            color: #6B7280;
+        }
+
+        .popup-value {
+            font-weight: 600;
+        }
+
+        /* PAGE 2 STYLES */
+        .main-content {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 32px 120px;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: #6B7280;
+            font-size: 16px;
+        }
+
+        .selected-area-info {
+            background: linear-gradient(135deg, #F0FDF4, #DCFCE7);
+            padding: 20px 24px;
+            border-radius: 12px;
+            border-left: 4px solid #0A5C36;
+            margin-bottom: 32px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #6B7280;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0A5C36;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .calendar-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .calendar-month {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .calendar-nav button {
+            padding: 6px 12px;
+            border: 1px solid #E5E7EB;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .calendar-nav button:hover {
+            background: #F9FAFB;
+            border-color: #0A5C36;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .calendar-header {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6B7280;
+            padding: 8px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .calendar-day:hover:not(.disabled) {
+            border-color: #0A5C36;
+            background: #F0FDF4;
+            transform: scale(1.05);
+        }
+
+        .calendar-day.has-data {
+            background: #E3F2FD;
+            border-color: #1E88E5;
+        }
+
+        .calendar-day.selected {
+            background: #0A5C36;
+            border-color: #0A5C36;
+            color: white;
+        }
+
+        .calendar-day.disabled {
+            color: #D1D5DB;
+            cursor: not-allowed;
+            background: #F9FAFB;
+        }
+
+        .data-indicator {
+            position: absolute;
+            bottom: 4px;
+            width: 4px;
+            height: 4px;
+            background: #1E88E5;
+            border-radius: 50%;
+        }
+
+        .calendar-day.selected .data-indicator {
+            background: white;
+        }
+
+        .layer-option {
+            padding: 16px;
+            border: 2px solid #E5E7EB;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .layer-option:hover {
+            border-color: #0A5C36;
+            background: #F0FDF4;
+            transform: translateX(4px);
+        }
+
+        .layer-option.selected {
+            border-color: #0A5C36;
+            background: #F0FDF4;
+        }
+
+        .layer-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #D1D5DB;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .layer-option.selected .layer-checkbox {
+            background: #0A5C36;
+            border-color: #0A5C36;
+            color: white;
+        }
+
+        .layer-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .layer-icon.ndvi { background: #E8F5E9; }
+        .layer-icon.rgb { background: #E3F2FD; }
+
+        .layer-info {
+            flex: 1;
+        }
+
+        .layer-name {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .layer-description {
+            font-size: 13px;
+            color: #6B7280;
+        }
+
+        /* PAGE 3 STYLES */
+        .comparison-container {
+            max-width: 1400px;
+            margin: 0 auto 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .viewer-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .image-viewer {
+            position: relative;
+            aspect-ratio: 16/10;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #1F2937;
+        }
+
+        .ndvi-image {
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 25% 35%, rgba(39, 174, 96, 0.8) 0%, transparent 30%),
+                radial-gradient(circle at 75% 25%, rgba(39, 174, 96, 0.7) 0%, transparent 25%),
+                radial-gradient(circle at 45% 65%, rgba(255, 193, 7, 0.6) 0%, transparent 20%),
+                radial-gradient(circle at 85% 70%, rgba(39, 174, 96, 0.8) 0%, transparent 30%),
+                radial-gradient(circle at 15% 75%, rgba(239, 68, 68, 0.5) 0%, transparent 15%),
+                linear-gradient(135deg, #1F2937, #374151);
+        }
+
+        .rgb-image {
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 30% 40%, rgba(34, 197, 94, 0.4) 0%, transparent 35%),
+                radial-gradient(circle at 70% 30%, rgba(34, 197, 94, 0.5) 0%, transparent 30%),
+                radial-gradient(circle at 50% 70%, rgba(101, 163, 13, 0.4) 0%, transparent 25%),
+                linear-gradient(135deg, #047857, #15803d);
+        }
+
+        .ndvi-scale {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.95);
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .scale-title {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+
+        .scale-gradient {
+            width: 25px;
+            height: 120px;
+            background: linear-gradient(to top, #EF4444, #FFC107, #27AE60);
+            border-radius: 3px;
+            margin-bottom: 6px;
+        }
+
+        .scale-labels {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 9px;
+            color: #6B7280;
+        }
+
+        .scenes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .scene-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .scene-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(10, 92, 54, 0.2);
+        }
+
+        .scene-card.selected {
+            border: 3px solid #0A5C36;
+        }
+
+        .scene-thumbnail {
+            aspect-ratio: 16/9;
+            position: relative;
+        }
+
+        .scene-thumbnail.ndvi-1 {
+            background: radial-gradient(circle at 50% 50%, rgba(39, 174, 96, 0.8), rgba(34, 197, 94, 0.6));
+        }
+
+        .scene-thumbnail.rgb-1 {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .scene-label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(255,255,255,0.95);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .scene-info {
+            padding: 12px;
+        }
+
+        .scene-name {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .scene-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #6B7280;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: #F9FAFB;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #6B7280;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        /* PAGE 4 STYLES */
+        .export-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .recommendation-card {
+            padding: 16px;
+            border-left: 3px solid;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .recommendation-card.critical {
+            background: #FEF2F2;
+            border-color: #EF4444;
+        }
+
+        .recommendation-card.warning {
+            background: #FFFBEB;
+            border-color: #F59E0B;
+        }
+
+        .recommendation-card.success {
+            background: #F0FDF4;
+            border-color: #27AE60;
+        }
+
+        .recommendation-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .recommendation-text {
+            font-size: 13px;
+        }
+
+        /* ACTION BAR */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #E5E7EB;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #0A5C36;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #0D7A4A;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(10, 92, 54, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #6B7280;
+            border: 1px solid #E5E7EB;
+        }
+
+        .btn-secondary:hover {
+            background: #F9FAFB;
+            border-color: #0A5C36;
+        }
+
+        .btn-success {
+            background: #27AE60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 400px;
+            }
+
+            .map-container {
+                height: 400px;
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+
+            .scenes-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="logo">
+            <div class="logo-icon">🌾</div>
+            <div>AgriDashboard</div>
+        </div>
+        <div style="font-size: 14px; color: #6B7280;">
+            <span style="font-weight: 600;">Tengku Aliff</span> | TASMEN AeroGreen
+        </div>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="progress-container">
+        <div class="steps">
+            <div class="progress-line" id="progressLine"></div>
+            <div class="step" id="step1">
+                <div class="step-circle">1</div>
+                <div class="step-label">Pilih Area</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-circle">2</div>
+                <div class="step-label">Pilih Tanggal</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-circle">3</div>
+                <div class="step-label">Hasil NDVI</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-circle">4</div>
+                <div class="step-label">Analisis</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 1: Select AOI -->
+    <div class="page active" id="page1">
+        <div class="main-container">
+            <div class="sidebar">
+                <div class="sidebar-title">Pilih Area Analisis</div>
+                <div class="sidebar-subtitle">Klik area di peta atau pilih dari daftar</div>
+
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Cari nama area...">
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title">📍 Lokasi</div>
+                    <div class="filter-chips">
+                        <div class="chip active" data-filter="all">Semua</div>
+                        <div class="chip" data-filter="selangor">Selangor</div>
+                        <div class="chip" data-filter="kedah">Kedah</div>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title">📋 Daftar Area (<span id="areaCount">3</span> area)</div>
+                    <div class="area-list" id="areaList">
+                        <div class="area-item selected" data-area="1" data-location="selangor">
+                            <div class="area-header">
+                                <div>
+                                    <div class="area-name">Syarikat Berkat Padi</div>
+                                    <div class="area-location">📍 Sg. Burong, Selangor</div>
+                                </div>
+                                <div class="area-badge">Tersedia</div>
+                            </div>
+                            <div class="area-stats">
+                                <span>📏 612.71 ha</span>
+                                <span>🕐 2 jam lalu</span>
+                            </div>
+                        </div>
+
+                        <div class="area-item" data-area="2" data-location="selangor">
+                            <div class="area-header">
+                                <div>
+                                    <div class="area-name">PPK Tg. Karang</div>
+                                    <div class="area-location">📍 Tanjung Karang</div>
+                                </div>
+                                <div class="area-badge">Tersedia</div>
+                            </div>
+                            <div class="area-stats">
+                                <span>📏 671.75 ha</span>
+                                <span>🕐 5 jam lalu</span>
+                            </div>
+                        </div>
+
+                        <div class="area-item" data-area="3" data-location="selangor">
+                            <div class="area-header">
+                                <div>
+                                    <div class="area-name">PPK Pasir Panjang</div>
+                                    <div class="area-location">📍 Kuala Selangor</div>
+                                </div>
+                                <div class="area-badge">Tersedia</div>
+                            </div>
+                            <div class="area-stats">
+                                <span>📏 495.73 ha</span>
+                                <span>🕐 1 hari lalu</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 2: Select Date & Layer -->
+    <div class="page" id="page2">
+        <div class="main-content">
+            <div class="page-header">
+                <div class="page-title">Pilih Tanggal Penerbangan & Layer</div>
+                <div class="page-subtitle">Pilih tanggal penerbangan drone dan layer yang ingin Anda analisis</div>
+            </div>
+
+            <div class="selected-area-info">
+                <div class="info-label">AREA TERPILIH</div>
+                <div class="info-value" id="selectedAreaDisplay">📍 Syarikat Berkat Padi, Sg. Burong (612.71 ha)</div>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="calendar-controls">
+                        <div class="calendar-month">📅 November 2025</div>
+                        <div class="calendar-nav">
+                            <button>◀</button>
+                            <button>▶</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="calendar-header">Min</div>
+                        <div class="calendar-header">Sen</div>
+                        <div class="calendar-header">Sel</div>
+                        <div class="calendar-header">Rab</div>
+                        <div class="calendar-header">Kam</div>
+                        <div class="calendar-header">Jum</div>
+                        <div class="calendar-header">Sab</div>
+
+                        <div class="calendar-day disabled"></div>
+                        <div class="calendar-day disabled"></div>
+                        <div class="calendar-day disabled"></div>
+                        <div class="calendar-day disabled"></div>
+                        <div class="calendar-day disabled"></div>
+                        <div class="calendar-day disabled">1</div>
+                        <div class="calendar-day disabled">2</div>
+                        <div class="calendar-day disabled">3</div>
+                        <div class="calendar-day disabled">4</div>
+                        <div class="calendar-day has-data" data-date="5">5<div class="data-indicator"></div></div>
+                        <div class="calendar-day disabled">6</div>
+                        <div class="calendar-day disabled">7</div>
+                        <div class="calendar-day disabled">8</div>
+                        <div class="calendar-day disabled">9</div>
+                        <div class="calendar-day disabled">10</div>
+                        <div class="calendar-day disabled">11</div>
+                        <div class="calendar-day has-data" data-date="12">12<div class="data-indicator"></div></div>
+                        <div class="calendar-day disabled">13</div>
+                        <div class="calendar-day disabled">14</div>
+                        <div class="calendar-day has-data" data-date="15">15<div class="data-indicator"></div></div>
+                        <div class="calendar-day disabled">16</div>
+                        <div class="calendar-day disabled">17</div>
+                        <div class="calendar-day has-data" data-date="18">18<div class="data-indicator"></div></div>
+                        <div class="calendar-day disabled">19</div>
+                        <div class="calendar-day disabled">20</div>
+                        <div class="calendar-day disabled">21</div>
+                        <div class="calendar-day has-data" data-date="22">22<div class="data-indicator"></div></div>
+                        <div class="calendar-day disabled">23</div>
+                        <div class="calendar-day disabled">24</div>
+                        <div class="calendar-day disabled">25</div>
+                        <div class="calendar-day has-data" data-date="26">26<div class="data-indicator"></div></div>
+                        <div class="calendar-day disabled">27</div>
+                        <div class="calendar-day disabled">28</div>
+                        <div class="calendar-day selected" data-date="29">29<div class="data-indicator"></div></div>
+                        <div class="calendar-day">30</div>
+                    </div>
+
+                    <div style="margin-top: 16px; padding: 12px; background: #F0FDF4; border-radius: 8px; font-size: 13px;">
+                        <strong>Tanggal dipilih:</strong> <span id="selectedDateDisplay">29 November 2025</span><br>
+                        <span style="color: #6B7280;">Status: Data tersedia dan telah diproses</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🛩️ Detail Penerbangan - <span id="flightDateDisplay">29 Nov 2025</span></div>
+                    <div style="padding: 16px; background: #F0FDF4; border-radius: 8px; margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px;">🕐 Penerbangan Pagi (08:30 - 11:45)</div>
+                        <div style="font-size: 13px; color: #6B7280;">
+                            📏 612.71 ha | 📸 1,247 foto | ✓ Processed
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🎨 Pilih Layer untuk Analisis</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    <div class="layer-option selected" data-layer="ndvi">
+                        <div class="layer-checkbox">✓</div>
+                        <div class="layer-icon ndvi">🌱</div>
+                        <div class="layer-info">
+                            <div class="layer-name">NDVI (Vegetation Index)</div>
+                            <div class="layer-description">Analisis kesehatan tanaman</div>
+                        </div>
+                    </div>
+
+                    <div class="layer-option selected" data-layer="rgb">
+                        <div class="layer-checkbox">✓</div>
+                        <div class="layer-icon rgb">📸</div>
+                        <div class="layer-info">
+                            <div class="layer-name">RGB Visual (True Color)</div>
+                            <div class="layer-description">Foto visual asli dari drone</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 3: NDVI Results -->
+    <div class="page" id="page3">
+        <div class="main-content">
+            <div class="page-header">
+                <div class="page-title">📍 Syarikat Berkat Padi - 29 November 2025</div>
+                <div class="page-subtitle">Penerbangan Pagi (08:30 - 11:45) | 612.71 ha | 1,247 foto terproses</div>
+            </div>
+
+            <div class="comparison-container">
+                <div class="viewer-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">🌱 NDVI Layer (Vegetation Index)</div>
+                    </div>
+                    <div class="image-viewer">
+                        <div class="ndvi-image"></div>
+                        <div class="ndvi-scale">
+                            <div class="scale-title">NDVI Index</div>
+                            <div class="scale-gradient"></div>
+                            <div class="scale-labels">
+                                <div>1.0 - Sehat</div>
+                                <div>0.5 - Sedang</div>
+                                <div>0.0 - Kritis</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="viewer-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">📸 RGB Visual (True Color)</div>
+                    </div>
+                    <div class="image-viewer">
+                        <div class="rgb-image"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="max-width: 1400px; margin: 24px auto 0;">
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">📸 Scene Drone Tersedia (4 scenes)</div>
+                <div class="scenes-grid">
+                    <div class="scene-card selected">
+                        <div class="scene-thumbnail ndvi-1">
+                            <div class="scene-label">NDVI</div>
+                        </div>
+                        <div class="scene-info">
+                            <div class="scene-name">Scene 1 - Zona Utara</div>
+                            <div class="scene-stats">
+                                <span>08:32 AM</span>
+                                <span>NDVI: 0.78</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="scene-card">
+                        <div class="scene-thumbnail rgb-1">
+                            <div class="scene-label">RGB</div>
+                        </div>
+                        <div class="scene-info">
+                            <div class="scene-name">Scene 1 - RGB Visual</div>
+                            <div class="scene-stats">
+                                <span>08:32 AM</span>
+                                <span>Visual</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="scene-card">
+                        <div class="scene-thumbnail ndvi-1">
+                            <div class="scene-label">NDVI</div>
+                        </div>
+                        <div class="scene-info">
+                            <div class="scene-name">Scene 2 - Zona Selatan</div>
+                            <div class="scene-stats">
+                                <span>10:15 AM</span>
+                                <span>NDVI: 0.82</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="scene-card">
+                        <div class="scene-thumbnail rgb-1">
+                            <div class="scene-label">RGB</div>
+                        </div>
+                        <div class="scene-info">
+                            <div class="scene-name">Scene 2 - RGB Visual</div>
+                            <div class="scene-stats">
+                                <span>10:15 AM</span>
+                                <span>Visual</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="max-width: 1400px; margin: 24px auto 0;">
+                <div class="card-title">📊 Ringkasan Analisis NDVI</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #27AE60;">73.2%</div>
+                        <div class="stat-label">Zona Sehat<br>(448.5 ha)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #F59E0B;">18.5%</div>
+                        <div class="stat-label">Zona Stress<br>(113.3 ha)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #EF4444;">8.3%</div>
+                        <div class="stat-label">Zona Kritis<br>(50.9 ha)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #1E88E5;">0.68</div>
+                        <div class="stat-label">NDVI Rata-rata<br>Seluruh Area</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="ndviChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 4: Analysis & Export -->
+    <div class="page" id="page4">
+        <div class="main-content">
+            <div class="page-header">
+                <div class="page-title">Analisis Detail & Export Data</div>
+                <div class="page-subtitle">Ringkasan analisis lengkap untuk Syarikat Berkat Padi - 29 November 2025</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">✅ Analisis Selesai!</div>
+                <div style="padding: 24px; background: #F0FDF4; border-radius: 12px; border-left: 4px solid #27AE60;">
+                    <div style="font-size: 18px; font-weight: 600; color: #0A5C36; margin-bottom: 12px;">
+                        Hasil analisis NDVI untuk 612.71 ha telah selesai diproses
+                    </div>
+                    <div style="color: #6B7280; font-size: 14px; margin-bottom: 16px;">
+                        📊 73.2% area dalam kondisi sehat | ⚠️ 3 zona memerlukan perhatian
+                    </div>
+                    <div class="export-grid">
+                        <button class="btn btn-primary" onclick="downloadFile('pdf')">📄 Download PDF</button>
+                        <button class="btn btn-primary" onclick="downloadFile('excel')">📊 Export Excel</button>
+                        <button class="btn btn-primary" onclick="downloadFile('geojson')">🗺️ Download GeoJSON</button>
+                        <button class="btn btn-primary" onclick="downloadFile('raster')">🖼️ Export NDVI Raster</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-title">💡 Rekomendasi Aksi Prioritas</div>
+                <div class="recommendation-card critical">
+                    <div class="recommendation-title" style="color: #DC2626;">🚨 Zona Kritis Terdeteksi</div>
+                    <div class="recommendation-text" style="color: #7F1D1D;">3 zona dengan NDVI < 0.3 memerlukan inspeksi lapangan segera</div>
+                </div>
+                <div class="recommendation-card warning">
+                    <div class="recommendation-title" style="color: #D97706;">💧 Optimasi Irigasi</div>
+                    <div class="recommendation-text" style="color: #78350F;">Tingkatkan irigasi di zona dengan indikasi water stress</div>
+                </div>
+                <div class="recommendation-card success">
+                    <div class="recommendation-title" style="color: #0A5C36;">🌿 Variable Rate Application</div>
+                    <div class="recommendation-text" style="color: #14532D;">Gunakan zone mapping untuk aplikasi pupuk presisi</div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-title">📈 Tren Kesehatan Tanaman (30 Hari Terakhir)</div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div id="actionInfo" style="font-size: 14px; color: #6B7280;">
+            <strong style="color: #0A5C36;">1 area dipilih:</strong> Syarikat Berkat Padi (612.71 ha)
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn btn-secondary" id="btnBack">← Kembali</button>
+            <button class="btn btn-primary" id="btnNext">Lanjut ke Pilih Tanggal →</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const MAPTILER_KEY = '7mFL2i1QQRWwkmcrLhvQ'; // MapTiler API key
+
+        // Area data with coordinates
+        const areasData = {
+            '1': {
+                name: 'Syarikat Berkat Padi',
+                location: 'Sg. Burong, Selangor',
+                area: '612.71 ha',
+                updated: '2 jam lalu',
+                coordinates: [101.2819, 3.3719],
+                polygon: [
+                    [101.27, 3.36],
+                    [101.29, 3.36],
+                    [101.29, 3.38],
+                    [101.27, 3.38],
+                    [101.27, 3.36]
+                ]
+            },
+            '2': {
+                name: 'PPK Tg. Karang',
+                location: 'Tanjung Karang',
+                area: '671.75 ha',
+                updated: '5 jam lalu',
+                coordinates: [101.1650, 3.4000],
+                polygon: [
+                    [101.15, 3.39],
+                    [101.18, 3.39],
+                    [101.18, 3.41],
+                    [101.15, 3.41],
+                    [101.15, 3.39]
+                ]
+            },
+            '3': {
+                name: 'PPK Pasir Panjang',
+                location: 'Kuala Selangor',
+                area: '495.73 ha',
+                updated: '1 hari lalu',
+                coordinates: [101.2420, 3.3370],
+                polygon: [
+                    [101.23, 3.32],
+                    [101.25, 3.32],
+                    [101.25, 3.35],
+                    [101.23, 3.35],
+                    [101.23, 3.32]
+                ]
+            }
+        };
+
+        // State
+        let currentPage = 1;
+        const totalPages = 4;
+        let selectedArea = '1';
+        let selectedDate = '29';
+        let map = null;
+        let markers = [];
+        let polygons = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            updateProgress();
+            setupEventListeners();
+            initCharts();
+        });
+
+        // Initialize MapTiler map
+        function initMap() {
+            maptilersdk.config.apiKey = MAPTILER_KEY;
+
+            map = new maptilersdk.Map({
+                container: 'map',
+                style: maptilersdk.MapStyle.SATELLITE,
+                center: [101.2419, 3.3619], // Center of Selangor
+                zoom: 10
+            });
+
+            map.on('load', function() {
+                // Add polygons for each area
+                Object.keys(areasData).forEach(areaId => {
+                    const area = areasData[areaId];
+
+                    // Add polygon source
+                    map.addSource(`area-${areaId}`, {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'geometry': {
+                                'type': 'Polygon',
+                                'coordinates': [area.polygon]
+                            }
+                        }
+                    });
+
+                    // Add polygon fill layer
+                    map.addLayer({
+                        'id': `area-fill-${areaId}`,
+                        'type': 'fill',
+                        'source': `area-${areaId}`,
+                        'paint': {
+                            'fill-color': areaId === selectedArea ? '#0A5C36' : '#1E88E5',
+                            'fill-opacity': areaId === selectedArea ? 0.3 : 0.2
+                        }
+                    });
+
+                    // Add polygon outline layer
+                    map.addLayer({
+                        'id': `area-outline-${areaId}`,
+                        'type': 'line',
+                        'source': `area-${areaId}`,
+                        'paint': {
+                            'line-color': areaId === selectedArea ? '#0A5C36' : '#1E88E5',
+                            'line-width': areaId === selectedArea ? 3 : 2
+                        }
+                    });
+
+                    // Add click event to polygon
+                    map.on('click', `area-fill-${areaId}`, function() {
+                        selectArea(areaId);
+                    });
+
+                    // Change cursor on hover
+                    map.on('mouseenter', `area-fill-${areaId}`, function() {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+
+                    map.on('mouseleave', `area-fill-${areaId}`, function() {
+                        map.getCanvas().style.cursor = '';
+                    });
+
+                    // Add marker with popup
+                    const popup = new maptilersdk.Popup({ offset: 25 })
+                        .setHTML(`
+                            <div class="map-popup">
+                                <div class="popup-title">📍 ${area.name}</div>
+                                <div class="popup-info">
+                                    <span class="popup-label">Luas Area</span>
+                                    <span class="popup-value">${area.area}</span>
+                                </div>
+                                <div class="popup-info">
+                                    <span class="popup-label">Lokasi</span>
+                                    <span class="popup-value">${area.location}</span>
+                                </div>
+                                <div class="popup-info">
+                                    <span class="popup-label">Terakhir Update</span>
+                                    <span class="popup-value">${area.updated}</span>
+                                </div>
+                            </div>
+                        `);
+
+                    const marker = new maptilersdk.Marker({ color: areaId === selectedArea ? '#0A5C36' : '#1E88E5' })
+                        .setLngLat(area.coordinates)
+                        .setPopup(popup)
+                        .addTo(map);
+
+                    markers.push({ id: areaId, marker: marker });
+                });
+            });
+        }
+
+        // Select area function
+        function selectArea(areaId) {
+            selectedArea = areaId;
+
+            // Update sidebar selection
+            document.querySelectorAll('.area-item').forEach(item => {
+                if (item.dataset.area === areaId) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+
+            // Update map polygons and markers
+            Object.keys(areasData).forEach(id => {
+                const isSelected = id === areaId;
+
+                // Update polygon colors
+                map.setPaintProperty(`area-fill-${id}`, 'fill-color', isSelected ? '#0A5C36' : '#1E88E5');
+                map.setPaintProperty(`area-fill-${id}`, 'fill-opacity', isSelected ? 0.3 : 0.2);
+                map.setPaintProperty(`area-outline-${id}`, 'line-color', isSelected ? '#0A5C36' : '#1E88E5');
+                map.setPaintProperty(`area-outline-${id}`, 'line-width', isSelected ? 3 : 2);
+
+                // Update marker colors
+                const markerObj = markers.find(m => m.id === id);
+                if (markerObj) {
+                    markerObj.marker.remove();
+                    const newMarker = new maptilersdk.Marker({ color: isSelected ? '#0A5C36' : '#1E88E5' })
+                        .setLngLat(areasData[id].coordinates)
+                        .setPopup(markerObj.marker.getPopup())
+                        .addTo(map);
+                    markerObj.marker = newMarker;
+                }
+            });
+
+            // Fly to selected area
+            map.flyTo({
+                center: areasData[areaId].coordinates,
+                zoom: 13,
+                duration: 1000
+            });
+
+            // Update action bar
+            const area = areasData[areaId];
+            document.getElementById('actionInfo').innerHTML = `<strong style="color: #0A5C36;">1 area dipilih:</strong> ${area.name} (${area.area})`;
+            document.getElementById('selectedAreaDisplay').innerHTML = `📍 ${area.name}, ${area.location} (${area.area})`;
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Area selection from sidebar
+            document.querySelectorAll('.area-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    selectArea(this.dataset.area);
+                });
+            });
+
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                document.querySelectorAll('.area-item').forEach(item => {
+                    const name = item.querySelector('.area-name').textContent.toLowerCase();
+                    const location = item.querySelector('.area-location').textContent.toLowerCase();
+                    if (name.includes(searchTerm) || location.includes(searchTerm)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+
+            // Filter chips
+            document.querySelectorAll('.chip').forEach(chip => {
+                chip.addEventListener('click', function() {
+                    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+
+                    const filter = this.dataset.filter;
+                    document.querySelectorAll('.area-item').forEach(item => {
+                        if (filter === 'all' || item.dataset.location === filter) {
+                            item.style.display = '';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                });
+            });
+
+            // Calendar selection
+            document.querySelectorAll('.calendar-day[data-date]').forEach(day => {
+                day.addEventListener('click', function() {
+                    if (!this.classList.contains('disabled')) {
+                        document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+                        this.classList.add('selected');
+                        selectedDate = this.dataset.date;
+                        document.getElementById('selectedDateDisplay').textContent = `${selectedDate} November 2025`;
+                        document.getElementById('flightDateDisplay').textContent = `${selectedDate} Nov 2025`;
+                    }
+                });
+            });
+
+            // Layer selection
+            document.querySelectorAll('.layer-option').forEach(layer => {
+                layer.addEventListener('click', function() {
+                    this.classList.toggle('selected');
+                    const checkbox = this.querySelector('.layer-checkbox');
+                    checkbox.textContent = this.classList.contains('selected') ? '✓' : '';
+                });
+            });
+
+            // Scene card selection
+            document.querySelectorAll('.scene-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.scene-card').forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+
+            // Navigation
+            document.getElementById('btnNext').addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    showPage(currentPage);
+                    updateProgress();
+                    updateButtons();
+                }
+            });
+
+            document.getElementById('btnBack').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    showPage(currentPage);
+                    updateProgress();
+                    updateButtons();
+                }
+            });
+        }
+
+        function showPage(pageNum) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page${pageNum}`).classList.add('active');
+            window.scrollTo(0, 0);
+
+            // Resize map when page 1 is shown
+            if (pageNum === 1 && map) {
+                setTimeout(() => map.resize(), 100);
+            }
+        }
+
+        function updateProgress() {
+            // Update step indicators
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`step${i}`);
+                const circle = step.querySelector('.step-circle');
+
+                if (i < currentPage) {
+                    step.classList.add('completed');
+                    step.classList.remove('active');
+                    circle.textContent = '✓';
+                } else if (i === currentPage) {
+                    step.classList.add('active');
+                    step.classList.remove('completed');
+                    circle.textContent = i;
+                } else {
+                    step.classList.remove('active', 'completed');
+                    circle.textContent = i;
+                }
+            }
+
+            // Update progress line
+            const progressLine = document.getElementById('progressLine');
+            const stepsContainer = document.querySelector('.steps');
+            const containerWidth = stepsContainer.offsetWidth;
+            const stepWidth = 40;
+            const availableWidth = containerWidth - (stepWidth * 2);
+            const progressWidth = ((currentPage - 1) / (totalPages - 1)) * availableWidth;
+            progressLine.style.width = `${progressWidth}px`;
+        }
+
+        function updateButtons() {
+            const btnBack = document.getElementById('btnBack');
+            const btnNext = document.getElementById('btnNext');
+            const actionInfo = document.getElementById('actionInfo');
+
+            btnBack.style.display = currentPage === 1 ? 'none' : 'block';
+
+            const area = areasData[selectedArea];
+
+            if (currentPage === 1) {
+                btnNext.textContent = 'Lanjut ke Pilih Tanggal →';
+                btnNext.className = 'btn btn-primary';
+                actionInfo.innerHTML = `<strong style="color: #0A5C36;">1 area dipilih:</strong> ${area.name} (${area.area})`;
+            } else if (currentPage === 2) {
+                btnNext.textContent = 'Lihat Hasil NDVI & Drone Scene →';
+                btnNext.className = 'btn btn-primary';
+                actionInfo.innerHTML = `<strong style="color: #0A5C36;">Dipilih:</strong> ${selectedDate} Nov 2025 | 2 Layer (NDVI, RGB Visual)`;
+            } else if (currentPage === 3) {
+                btnNext.textContent = 'Lanjut ke Analisis Detail →';
+                btnNext.className = 'btn btn-primary';
+                actionInfo.innerHTML = 'Scene 1 (Zona Utara) | NDVI: 0.78 (Sehat)';
+            } else if (currentPage === 4) {
+                btnNext.textContent = '✓ Selesai & Simpan Analisis';
+                btnNext.className = 'btn btn-success';
+                actionInfo.innerHTML = `Analisis selesai untuk ${area.area} | 3 zona memerlukan perhatian`;
+
+                btnNext.onclick = function() {
+                    alert('✅ Analisis berhasil disimpan!\n\nData telah tersimpan di sistem dan siap untuk di-export.');
+                    return false;
+                };
+            } else {
+                btnNext.onclick = null;
+            }
+        }
+
+        // Initialize charts
+        function initCharts() {
+            // NDVI Distribution Chart
+            const ndviCtx = document.getElementById('ndviChart');
+            if (ndviCtx) {
+                new Chart(ndviCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Sehat (0.6-1.0)', 'Sedang (0.3-0.6)', 'Kritis (0.0-0.3)'],
+                        datasets: [{
+                            label: 'Luas Area (ha)',
+                            data: [448.5, 113.3, 50.9],
+                            backgroundColor: ['#27AE60', '#F59E0B', '#EF4444']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Distribusi Kesehatan Tanaman Berdasarkan NDVI'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Luas (ha)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Trend Chart
+            const trendCtx = document.getElementById('trendChart');
+            if (trendCtx) {
+                new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['1 Nov', '5 Nov', '8 Nov', '12 Nov', '15 Nov', '18 Nov', '22 Nov', '26 Nov', '29 Nov'],
+                        datasets: [{
+                            label: 'NDVI Rata-rata',
+                            data: [0.62, 0.65, 0.63, 0.67, 0.68, 0.66, 0.69, 0.67, 0.68],
+                            borderColor: '#27AE60',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true
+                            },
+                            title: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                min: 0.5,
+                                max: 0.8,
+                                title: {
+                                    display: true,
+                                    text: 'NDVI Value'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Download file function
+        function downloadFile(type) {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Processing...';
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+
+                let message = '';
+                switch(type) {
+                    case 'pdf':
+                        message = '📄 PDF Report berhasil di-download!';
+                        break;
+                    case 'excel':
+                        message = '📊 Excel file berhasil di-download!';
+                        break;
+                    case 'geojson':
+                        message = '🗺️ GeoJSON file berhasil di-download!';
+                        break;
+                    case 'raster':
+                        message = '🖼️ NDVI Raster berhasil di-download!';
+                        break;
+                }
+                alert(message);
+            }, 1500);
+        }
+
+        // Initial button state
+        updateButtons();
+    </script>
+</body>
+</html>
